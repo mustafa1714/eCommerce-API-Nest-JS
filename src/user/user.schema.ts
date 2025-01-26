@@ -45,10 +45,10 @@ export class User {
   age: number;
 
   @Prop({
-    type: Number,
+    type: String,
     length: [11, 'Phone must be at least 11 characters as EG Standerd'],
   })
-  phone: number;
+  phone: string;
 
   @Prop({
     type: String,
