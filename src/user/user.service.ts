@@ -45,9 +45,9 @@ export class UserService {
     // save user
     await createdUser.save();
     return {
+      status: 201,
       message: 'User created successfully',
       data: createdUser,
-      status: 201,
     };
   }
 
@@ -57,14 +57,42 @@ export class UserService {
    * @returns All users
    * @access Private
    */
-  async findAll(): Promise<{
+  async findAll(query): Promise<{
+    length: number;
     data: User[];
     status: number;
   }> {
-    const users = await this.userModel.find().select('-password -__v');
+    const {
+      limit = 1000_00_00,
+      skip = 0,
+      sort = 'asc',
+      name,
+      email,
+      role,
+    } = query;
+
+    if (Number.isNaN(+limit))
+      throw new BadRequestException('Limit must be a number');
+
+    if (Number.isNaN(+skip))
+      throw new BadRequestException('Skip must be a number');
+
+    if (!['asc', 'desc'].includes(sort))
+      throw new BadRequestException('Sort must be asc or desc');
+
+    const users = await this.userModel
+      .find()
+      .skip(skip)
+      .limit(limit)
+      .where({ name: new RegExp(name, 'i') })
+      .where({ email: new RegExp(email, 'i') })
+      .where({ role: new RegExp(role, 'i') })
+      .sort({ name: sort })
+      .select('-password -__v');
     return {
-      data: users,
       status: 200,
+      length: users.length,
+      data: users,
     };
   }
 
@@ -79,8 +107,8 @@ export class UserService {
     const user = await this.userModel.findById(id).select('-password -__v');
     if (!user) throw new NotFoundException('User not found');
     return {
-      data: user,
       status: 200,
+      data: user,
     };
   }
 
@@ -115,9 +143,9 @@ export class UserService {
     );
 
     return {
+      status: 201,
       message: 'User updated successfully',
       data: updatedUser,
-      status: 201,
     };
   }
 
@@ -133,8 +161,8 @@ export class UserService {
     if (!user) throw new NotFoundException('User not found');
     await this.userModel.findByIdAndDelete(id);
     return {
-      message: 'User deleted successfully',
       status: 200,
+      message: 'User deleted successfully',
     };
   }
 }

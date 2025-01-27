@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -38,8 +39,8 @@ export class UserController {
   @Get()
   @Roles(['admin'])
   @UseGuards(AuthGuard)
-  findAll() {
-    return this.userService.findAll();
+  findAll(@Query() query) {
+    return this.userService.findAll(query);
   }
 
   /**
