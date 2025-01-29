@@ -165,4 +165,73 @@ export class UserService {
       message: 'User deleted successfully',
     };
   }
+
+  /**
+   * Get user profile
+   * @method GET - http://localhost:3000/api/v1/profile
+   * @param payload
+   * @returns user
+   * @access Private [user self, admin]
+   */
+  async getProfile(payload) {
+    if (!payload.id) throw new NotFoundException('User not found');
+    const user = await this.userModel
+      .findById(payload.id)
+      .select('-password -__v');
+
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      status: 200,
+      data: user,
+    };
+  }
+
+  /**
+   * Update user profile
+   * @method PATCH - http://localhost:3000/api/v1/profile
+   * @param payload
+   * @param updateUserDto
+   * @returns updated user
+   * @access Private [user self, admin]
+   */
+  async updateProfile(payload, updateUserDto: UpdateUserDto) {
+    if (!payload.id) throw new NotFoundException('User not found');
+
+    const user = await this.userModel.findById(payload.id);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(payload.id, updateUserDto, { new: true })
+      .select('-password -__v');
+    return {
+      status: 201,
+      message: 'User updated successfully',
+      data: updatedUser,
+    };
+  }
+
+  async deleteProfile(payload) {
+    if (!payload.id) throw new NotFoundException('User not found');
+    const user = await this.userModel.findById(payload.id);
+    if (!user) throw new NotFoundException('User not found');
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(
+        payload.id,
+        {
+          active: false,
+        },
+        { new: true },
+      )
+      .select('-password -__v');
+
+    return {
+      status: 200,
+      message: 'Your account has been deleted successfully',
+      data: updatedUser,
+    };
+  }
 }

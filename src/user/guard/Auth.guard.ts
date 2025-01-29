@@ -35,6 +35,11 @@ export class AuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
 
+      if (payload.id && payload.role === 'admin') {
+        request['user'] = payload;
+        return true;
+      }
+
       if (!roles.includes(payload.role) || !payload.role || payload.role === '')
         throw new UnauthorizedException();
 
