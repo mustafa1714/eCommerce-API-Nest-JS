@@ -3,18 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SignUpDto, SignInDto } from './dto/auth.dto';
+import { SignUpDto, SignInDto, ResetPasswordDto } from './dto/auth.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/user/user.schema';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async signUp(signUpDto: SignUpDto) {
@@ -77,6 +79,78 @@ export class AuthService {
       message: 'You Signed In Successfully',
       data: user,
       accessToken,
+    };
+  }
+
+  async resetPassword({ email }: ResetPasswordDto) {
+    const user = await this.userModel.findOne({ email: email });
+    if (!user) throw new NotFoundException('User not found');
+
+    // generate code in 6 digits
+    const code = Math.floor(Math.random() * 1000000)
+      .toString()
+      .padStart(6, '0');
+
+    // update user with verification code in db
+    await this.userModel.findOneAndUpdate(
+      { email },
+      { verificationCode: code },
+    );
+
+    // send email
+    const htmlMessage = `<div>
+      <h1>You are forgot your password</h1>
+      <p>Use this code to reset your password: ${code}</p>
+      <h3>Thank you, eCommerce-nestjs</h3>
+    </div>`;
+    await this.mailerService.sendMail({
+      from: `eCommerce-nestjs< ${process.env.UsEMAIL_USERNAMEe} >`,
+      to: email,
+      subject: 'eCommerce-nestjs - Reset Password',
+      html: htmlMessage,
+    });
+    return {
+      status: 200,
+      message: `Verification code sent to ${email}`,
+    };
+  }
+
+  async verifyCode({ email, code }: { email: ResetPasswordDto; code: string }) {
+    const user = await this.userModel
+      .findOne({ email })
+      .select('verificationCode');
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.verificationCode != code)
+      throw new BadRequestException('Invalid code');
+
+    await this.userModel.findOneAndUpdate(
+      { email },
+      { verificationCode: null },
+    );
+    return {
+      status: 200,
+      message: 'Code verified successfully, Go to set new password',
+    };
+  }
+
+  async changePassword({ email, password }: SignInDto) {
+    const salt = 10;
+    const user = await this.userModel.findOne({ email });
+    if (!user) throw new NotFoundException('User not found');
+
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    await this.userModel.findOneAndUpdate(
+      { email },
+      { password: hashedPassword },
+    );
+
+    return {
+      status: 200,
+      message:
+        'Password changed successfully, Now You Can Sign In with New Password',
     };
   }
 }

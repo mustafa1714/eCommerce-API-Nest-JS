@@ -34,3 +34,10 @@ export class SignInDto {
   @IsNotEmpty({ message: 'Password is required' })
   password: string;
 }
+
+export class ResetPasswordDto {
+  @IsString({ message: 'Email must be a string' })
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Email is not valid' })
+  email: string;
+}
